@@ -1,5 +1,6 @@
 import express from 'express';
 import authRoutes from './routes/auth.routes.js'
+import categroryRoutes from './routes/category.routes.js'
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -12,6 +13,8 @@ const limiter = rateLimit({
     windows:15*60*1000,
     max :100
 });
+app.use(limiter);
+
 app.use(cors({
     origin: "http://localhost:3000"
 }))
@@ -25,5 +28,6 @@ app.get('/', (req, res ,err ) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/categories',categroryRoutes)
 
 export default app;
