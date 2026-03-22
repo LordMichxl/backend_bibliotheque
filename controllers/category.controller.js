@@ -1,5 +1,4 @@
-import { Category } from '../models/index.js'; 
-import { Book } from '../models/index.js';
+import { Category, Book } from '../models/index.js'; 
 
 export const getCategory = async (req, res) =>{
     try {

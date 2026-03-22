@@ -1,6 +1,7 @@
 import express from 'express';
 import authRoutes from './routes/auth.routes.js'
 import categroryRoutes from './routes/category.routes.js'
+import bookRoutes from './routes/book.routes.js'
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -29,5 +30,7 @@ app.get('/', (req, res ,err ) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/categories',categroryRoutes)
+app.use('/api/books',bookRoutes)
+
 
 export default app;
