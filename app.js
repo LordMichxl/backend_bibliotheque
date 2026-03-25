@@ -1,29 +1,37 @@
 import express from 'express';
 import authRoutes from './routes/auth.routes.js'
+import memberRoutes from './routes/member.routes.js';
+import borrowRoutes from './routes/borrow.routes.js';
+import bookRoutes from './routes/book.routes.js';
+import categoryRoutes from './routes/category.routes.js';
+import statsRoutes from './routes/stats.routes.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
-
 const app = express();
-app.use(helmet())
-app.use(express.json())
-const limiter = rateLimit({
-    windows:15*60*1000,
-    max :100
-});
+
+
+app.use(helmet());
 app.use(cors({
-    origin: "http://localhost:3000"
-}))
-app.get('/', (req, res ,err ) => {
-    if(err) {
-        console.error(err);
-        return res.status(500).json('Internal Server Error'); // json permet d'envoyer une réponse au format JSON, send permet d'envoyer une réponse au format texte
-    }
-    res.status(403).json('Accesss refused');
+    origin: true,
+    credentials: true
+}));
+app.use(express.json());
 
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100
 });
 
+app.use(limiter);
+
+// ROUTES
 app.use('/api/auth', authRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/borrows', borrowRoutes);
+app.use('/api/books', bookRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/stats', statsRoutes);
 
 export default app;
