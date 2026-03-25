@@ -5,16 +5,27 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const register =async (req,res)=>{
-    const {name,email,password} = req.body;
-    //hasher le mot de passe 
-    const mdpHashed = await bcryptjs.hash(password,10);
-    User.create({
-        name,
-        email,
-        password:mdpHashed
-    })
-    .then (user => res.status(201).json({message: "utilisateur enregistré avec succès",user}))
-    .catch(err=> res.status(400).json ({error: err.message}));
+    try {
+        const {name,email,password} = req.body;
+          const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            return res.status(400).json("Utilisateur déjà existant");
+        }else{
+        //hasher le mot de passe 
+        const mdpHashed = await bcryptjs.hash(password,10);
+        
+        const user = await User.create({
+            name,
+            email,
+            password:mdpHashed
+        });
+        const userSafe = await User.findByPk(user.id, {
+        attributes: { exclude: ['password', 'createdAt', 'updatedAt'] }});
+        return res.status(201).json("utilisateur enregistré avec succès",userSafe);
+    }
+    }catch(error){
+        return res.status(400).json(error.message);
+    }
 }
 
 export const login = async(req,res)=>{ 
@@ -24,7 +35,7 @@ export const login = async(req,res)=>{
      //verifie si l'email existe
     .then (user => {
         if (!user) {
-        return res.status(401).json({message: "utilisateur ou mot de passe incorrect"});
+        return res.status(401).json("utilisateur ou mot de passe incorrect");
     }
     const isValidPwd = bcryptjs.compare(password, user.password);
     if (!isValidPwd) {
@@ -33,7 +44,7 @@ export const login = async(req,res)=>{
     const token = jwt.sign({id: user.id},process.env.JWT_SECRET,{ expiresIn: process.env.JWT_EXPIRES_IN });
     return res.status(200).json({token: token,message: "connexion réussie" });
     })
-    .catch(err => res.status(500).json({error: err.message}));    
+    .catch(err => res.status(500).json(err.message));    
 }
 
 export const getProfile = async(req, res)=>{
@@ -43,6 +54,6 @@ export const getProfile = async(req, res)=>{
     });
         return res.status(200).json(user)
     } catch (error) {
-        return res.status(500).json({err: error.message})
+        return res.status(500).json(error.message)
     }
 }
