@@ -37,7 +37,7 @@ export const getBooks = async (req, res) =>{
         });
 
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json(error.message);
     }
 }
 
@@ -58,9 +58,9 @@ export const addBook = async (req, res)=>{
             description, 
             cover_image : req.file ? req.file.filename: null
         })
-        return res.status(201).json({message: " Livre  créé" , book: book})
+        return res.status(201).json({message:"Livre créé"})
     } catch (error) {
-        return res.status(500).json({message: error.message})
+        return res.status(500).json(error.message)
        
     }
 }
@@ -83,9 +83,9 @@ export const updateBook = async (req, res)=>{
             cover_image : req.file ? req.file.filename: book.cover_image
         })
         await book.reload();
-        return res.status(200).json({message: " Livre modifié" , book: book})
+        return res.status(200).json({message:" Livre modifié"})
     } catch (error) {
-        return res.status(500).json({message: error.message})
+        return res.status(500).json(error.message)
        
     }
 }
@@ -104,6 +104,6 @@ export const deleteBook = async (req, res)=>{
         await book.destroy()
         return res.status(200).json({message:"Livre supprimé"})
     } catch (error) {
-        return res.status(500).json({message: error.message})
+        return res.status(500).json(error.message)
     }
 }

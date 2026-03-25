@@ -5,6 +5,9 @@ import bookRoutes from './routes/book.routes.js'
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 
 
 const app = express();
@@ -32,5 +35,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/categories',categroryRoutes)
 app.use('/api/books',bookRoutes)
 
+//gestion des images dans books
+const filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(filename);
 
+app.use('/uploads', express.static(path.join(dirname, 'uploads')));
 export default app;

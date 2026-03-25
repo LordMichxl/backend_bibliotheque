@@ -6,11 +6,14 @@ export const getCategory = async (req, res) =>{
             include:[{
                 model: Book,
                 attributes: ['id'],
-            }]
+                exclude: ['createdAt', 'updatedAt'],
+
+            }],
+            attributes: {exclude: ['createdAt', 'updatedAt']}
         });
-        return res.status(200).json({categories:categories})
+        return res.status(200).json(categories)
     } catch (error) {
-        return res.status(500).json({error: error.message});
+        return res.status(500).json(error.message);
     }
 }
 
@@ -21,10 +24,10 @@ export const addCategory = async (req,res) =>{
         description
     })
     .then(Category =>(
-        res.status(201).json({message: "Catégorie crée", Categorie: Category})
+        res.status(201).json({message:"Catégorie crée"})
     ))
     .catch(err=>{
-        res.status(500).json({error:err.message})
+        res.status(500).json(err.message)
     })
 }
 
@@ -34,13 +37,13 @@ export const updateCategory = async(req,res) => {
         const {name, description} = req.body;
         const category =await Category.findByPk(id);
         if (!category) {
-            res.status(404).json({message:"catégorie n'existe pas"})
+            res.status(404).json({message: "catégorie n'existe pas"})
         }
     
       await category.update({name, description})
     return res.status(200).json({message: "catégorie mise à jour"})
     } catch(err){
-        return res.status(500).json({message: "la mise à jour a échoué", error: err.message})
+        return res.status(500).json({message: "la mise à jour a échoué", error:err.message})
     }
 }
 
@@ -48,12 +51,12 @@ export const deleteCategory = async(req,res) => {
     const{id} = req.params;
     const category =await Category.findByPk(id);
     if (!category) {
-        res.status(404).json({message:"catégorie n'existe pas"})
+        res.status(404).json({message: "catégorie n'existe pas"})
     }
     try{
         await category.destroy()
-        return res.status(200).json({message:"Catégorie supprimée"})
+        return res.status(200).json({ message: "Catégorie supprimée" })
     } catch(error){
-        return res.status(404).json({message: "la suprpession a echoué", erreur: error})
+        return res.status(404).json({message:"la suprpession a echoué",error: error})
     }
 }
