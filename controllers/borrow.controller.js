@@ -1,163 +1,166 @@
-import { Borrow, Member, Book } from '../models/index.js';
+import Borrow from '../models/borrow.model.js';
+import Book from '../models/book.model.js';
+import Member from '../models/member.model.js';
+import { Op } from 'sequelize';
 
-//récupérer tous les emprunts
+// ─────────────────────────────────────────
+// GET /api/borrows
+// ─────────────────────────────────────────
 export const getBorrows = async (req, res) => {
-  try {
-    const { status, member_id, book_id, page = 1, limit = 10 } = req.query;
-    const where = {};
+    try {
+        // 1. Récupérer les paramètres de la query
+        const { status, page = 1, limit = 10 } = req.query;
 
-    if (status) where.status = status;
-    if (member_id) where.member_id = member_id;
-    if (book_id) where.book_id = book_id;
+        // 2. Construire le filtre dynamiquement
+        const where = {};
+        if (status) {
+            where.status = status === 'borrowed' ? 'Borrowed' : status === 'returned' ? 'Returned' : 'Overdue';
+        }
 
-    const result = await Borrow.findAndCountAll({
-      where,
-      limit: Number(limit),
-      offset: (Number(page) - 1) * Number(limit),
-      order: [['id', 'DESC']],
-      include: [Member, Book],
-    });
+        // 3. Calculer l'offset pour la pagination
+        const offset = (page - 1) * limit;
 
-    res.status(200).json({
-      borrows: result.rows,
-      meta: {
-        total: result.count,
-        page: Number(page),
-        limit: Number(limit),
-      },
-    });
-  } catch (err) {
-    res.status(400).json({
-      message: 'Erreur de récupération des emprunts',
-      error: err.message,
-    });
-  }
-};
+        // 4. Requête avec filtres + pagination + jointures
+        const { count, rows } = await Borrow.findAndCountAll({
+            where,
+            include: [
+                {
+                    model: Member,
+                    as: 'member',
+                    attributes: ['id', 'first_name', 'last_name'] // uniquement les champs utiles
+                },
+                {
+                    model: Book,
+                    as: 'book',
+                    attributes: ['id', 'title', 'author'] // uniquement les champs utiles
+                }
+            ],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            order: [['createdAt', 'DESC']] // plus récent en premier
+        });
 
-//récupérer un emprunt
-export const getBorrow = async (req, res) => {
-  try {
-    const { id } = req.params;
+        return res.status(200).json({
+            total: count,                         // nombre total d'emprunts
+            page: parseInt(page),                 // page actuelle
+            totalPages: Math.ceil(count / limit), // nombre de pages
+            borrows: rows.map(borrow => ({
+                ...borrow.toJSON(),
+                status: borrow.status.toLowerCase()
+            }))                         // emprunts de la page courante
+        });
 
-    const borrow = await Borrow.findByPk(id, {
-      include: [Member, Book],
-    });
-
-    if (!borrow) {
-      return res.status(404).json({ message: "emprunt n'existe pas" });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
     }
-
-    res.status(200).json(borrow);
-  } catch (err) {
-    res.status(400).json({
-      message: "Erreur de récupération de l'emprunt",
-      error: err.message,
-    });
-  }
 };
 
-//creer un emprunt
+// ─────────────────────────────────────────
+// POST /api/borrows
+// ─────────────────────────────────────────
 export const addBorrow = async (req, res) => {
-  try {
-    const { member_id, book_id, borrow_date, due_date } = req.body;
+    try {
+        const { member_id, book_id, due_date } = req.body;
 
-    if (!member_id || !book_id || !borrow_date || !due_date) {
-      return res.status(400).json({
-        message: 'member_id, book_id, borrow_date, due_date sont obligatoires',
-      });
+        // 1. Vérifier que le membre existe et est actif
+        const member = await Member.findByPk(member_id);
+        if (!member) {
+            return res.status(404).json({ message: "Membre introuvable" });
+        }
+        if (member.status !== 'Active') {
+            return res.status(400).json({ message: "Le membre n'est pas actif" });
+        }
+
+        // 2. Vérifier que le livre existe et est disponible
+        const book = await Book.findByPk(book_id);
+        if (!book) {
+            return res.status(404).json({ message: "Livre introuvable" });
+        }
+        if (book.available_quantity < 1) {
+            return res.status(400).json({ message: "Aucun exemplaire disponible" });
+        }
+
+        // 3. Créer l'emprunt
+        const borrow = await Borrow.create({
+            member_id,
+            book_id,
+            due_date,
+            borrow_date: new Date(),  // date du jour automatiquement
+            status: 'Borrowed'        // statut par défaut
+        });
+
+        // 4. Décrémenter available_quantity du livre
+        await book.update({
+            available_quantity: book.available_quantity - 1
+        });
+
+        // 5. Recharger l'emprunt avec les relations
+        const borrowWithRelations = await Borrow.findByPk(borrow.id, {
+            include: [
+                { model: Member, as: 'member', attributes: ['id', 'first_name', 'last_name'] },
+                { model: Book, as: 'book', attributes: ['id', 'title', 'author'] }
+            ]
+        });
+
+        const borrowData = {
+            ...borrowWithRelations.toJSON(),
+            status: borrowWithRelations.status.toLowerCase()
+        };
+
+        return res.status(201).json(borrowData);
+
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
     }
-
-    const member = await Member.findByPk(member_id);
-    if (!member) throw new Error('membre non trouvé');
-
-    const book = await Book.findByPk(book_id);
-    if (!book) throw new Error('livre non trouvé');
-
-    if (book.available_quantity <= 0) {
-      throw new Error('Aucune copie disponible');
-    }
-
-    const existingBorrow = await Borrow.findOne({
-      where: {
-        book_id,
-        status: 'Borrowed',
-      },
-    });
-
-    if (existingBorrow) {
-      throw new Error('Ce livre est déjà emprunté');
-    }
-
-    const borrow = await Borrow.create({
-      member_id,
-      book_id,
-      borrow_date,
-      due_date,
-      return_date: null,
-      status: 'Borrowed',
-    });
-
-    await book.update({ available_quantity: book.available_quantity - 1 });
-
-    res.status(201).json(borrow);
-  } catch (err) {
-    res.status(400).json({
-      message: 'Erreur de création de l\'emprunt',
-      error: err.message,
-    });
-  }
 };
 
-//mettre à jour un emprunt
-export const updateBorrow = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { return_date, status } = req.body;
+// ─────────────────────────────────────────
+// PUT /api/borrows/return/:id
+// ─────────────────────────────────────────
+export const returnBorrow = async (req, res) => {
+    try {
+        const { id } = req.params;
 
-    const borrow = await Borrow.findByPk(id, {
-      include: [Member, Book],
-    });
+        // 1. Vérifier que l'emprunt existe
+        const borrow = await Borrow.findByPk(id, {
+            include: [
+                { model: Book, as: 'book' },
+                { model: Member, as: 'member', attributes: ['id', 'first_name', 'last_name'] }
+            ]
+        });
+        if (!borrow) {
+            return res.status(404).json({ message: "Emprunt introuvable" });
+        }
 
-    if (!borrow) {
-      return res.status(404).json({ message: "emprunt n'existe pas" });
+        // 2. Vérifier que le livre n'est pas déjà retourné
+        if (borrow.status === 'Returned') {
+            return res.status(400).json({ message: "Ce livre a déjà été retourné" });
+        }
+
+        // 3. Mettre à jour l'emprunt
+        await borrow.update({
+            status: 'Returned',
+            return_date: new Date() // date du jour automatiquement
+        });
+
+        // 4. Incrémenter available_quantity du livre
+        await borrow.book.update({
+            available_quantity: borrow.book.available_quantity + 1
+        });
+
+        await borrow.reload(); // recharger les données à jour
+
+        const borrowData = {
+            ...borrow.toJSON(),
+            status: borrow.status.toLowerCase()
+        };
+
+        return res.status(200).json({
+            message: "Livre retourné avec succès",
+            borrow: borrowData
+        });
+
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
     }
-
-    await borrow.update({
-      return_date,
-      status,
-    });
-
-    if (status === 'Returned' && borrow.status !== 'Returned') {
-      await borrow.Book.update({ available_quantity: borrow.Book.available_quantity + 1 });
-    }
-
-    res.status(200).json(borrow);
-  } catch (err) {
-    res.status(400).json({
-      message: 'Erreur de mise à jour de l\'emprunt',
-      error: err.message,
-    });
-  }
-};
-
-//supprimer un emprunt
-export const deleteBorrow = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const borrow = await Borrow.findByPk(id);
-
-    if (!borrow) {
-      return res.status(404).json({ message: "emprunt n'existe pas" });
-    }
-
-    await borrow.destroy();
-
-    res.status(200).json({ message: 'Emprunt supprimé avec succès' });
-  } catch (err) {
-    res.status(400).json({
-      message: 'Erreur de suppression de l\'emprunt',
-      error: err.message,
-    });
-  }
 };

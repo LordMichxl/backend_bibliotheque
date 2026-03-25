@@ -1,7 +1,8 @@
 import express from 'express';
+import { getBookStats } from '../controllers/stats.controller.js';
 
 const router = express.Router();
 
-// TODO: implement stats routes
+router.get('/books', getBookStats);
 
 export default router;

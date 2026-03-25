@@ -4,21 +4,21 @@ import { Member } from '../models/index.js';
 export const addMember = async (req, res) => {
   const { first_name, last_name, email, phone, address, membership_date, status } = req.body;
 
-  if (!first_name || !last_name || !email) {
-    return res.status(400).json({ message: 'first_name, last_name et email sont obligatoires' });
-  }
-
   Member.create({
     first_name,
     last_name,
     email,
-    phone: phone || null,
-    address: address || null,
-    membership_date: membership_date || new Date(),
-    status: status ? (status.toLowerCase() === 'inactive' ? 'Inactive' : 'Active') : 'Active',
+    phone,
+    address,
+    membership_date,
+    status: status === 'inactive' ? 'Inactive' : 'Active',
   })
     .then((member) => {
-      res.status(201).json({ message: 'membre ajouté avec succès', member });
+      const memberData = {
+        ...member.toJSON(),
+        status: member.status.toLowerCase()
+      };
+      res.status(201).json({ message: 'membre ajouté avec succès', member: memberData });
     })
     .catch((err) => {
       const message = err.name === 'SequelizeUniqueConstraintError' ? 'cet email existe déjà' : 'la création a échoué';
@@ -49,7 +49,17 @@ export const getMembers = async (req, res) => {
     order: [['createdAt', 'DESC']],
   })
     .then((result) => {
-      res.status(200).json({ members: result.rows, meta: { total: result.count, page: Number(page), limit: Number(limit) } });
+      const totalPages = Math.ceil(result.count / Number(limit));
+      const members = result.rows.map(member => ({
+        ...member.toJSON(),
+        status: member.status.toLowerCase()
+      }));
+      res.status(200).json({
+        total: result.count,
+        page: Number(page),
+        totalPages,
+        members
+      });
     })
     .catch((err) => {
       res.status(500).json({ message: 'Erreur lors de la récupération des membres', error: err.message });
@@ -62,7 +72,11 @@ export const getMember = async (req, res) => {
   Member.findByPk(id)
     .then((member) => {
       if (!member) return res.status(404).json({ message: 'membre non trouvé' });
-      res.status(200).json(member);
+      const memberData = {
+        ...member.toJSON(),
+        status: member.status.toLowerCase()
+      };
+      res.status(200).json(memberData);
     })
     .catch((err) => {
       res.status(500).json({ message: 'Erreur lors de la récupération du membre', error: err.message });
