@@ -4,7 +4,7 @@ export const listMembersSchema = Joi.object({
     search: Joi.string().optional(),
     status: Joi.string().valid('active', 'inactive').optional(),
     page: Joi.number().integer().min(1).default(1),
-    limit: Joi.number().integer().min(1).max(100).default(10)
+    limit: Joi.number().integer().min(1).max(200).default(10)
 });
 
 export const addMemberSchema = Joi.object({

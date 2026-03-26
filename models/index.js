@@ -8,11 +8,11 @@ import Category from "./category.model.js";
 Category.hasMany(Book, { foreignKey: 'category_id' });
 Book.belongsTo(Category, { foreignKey: 'category_id' });
 
-Borrow.belongsTo(Member, {foreignKey: 'member_id'})
-Member.hasMany(Borrow, {foreignKey: 'member_id'})
+Borrow.belongsTo(Member, { foreignKey: 'member_id', as: 'member' });
+Member.hasMany(Borrow, { foreignKey: 'member_id', as: 'borrows' });
 
-Borrow.belongsTo(Book, {foreignKey: 'book_id'})
-Book.hasMany(Borrow, { foreignKey: 'book_id' });
+Borrow.belongsTo(Book, { foreignKey: 'book_id', as: 'book' });
+Book.hasMany(Borrow, { foreignKey: 'book_id', as: 'borrows' });
 
 export {sequelize, User, Category, Book, Member, Borrow};
 
