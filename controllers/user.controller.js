@@ -21,7 +21,7 @@ export const register =async (req,res)=>{
         });
         const userSafe = await User.findByPk(user.id, {
         attributes: { exclude: ['password', 'createdAt', 'updatedAt'] }});
-        return res.status(201).json("utilisateur enregistré avec succès",userSafe);
+        return res.status(201).json({ message: "Utilisateur enregistré avec succès", user: userSafe });
     }
     }catch(error){
         return res.status(400).json(error.message);
@@ -29,28 +29,36 @@ export const register =async (req,res)=>{
 }
 
 export const login = async(req,res)=>{ 
+    try{
     const {email, password} = req.body;
     
-     await User.findOne({where: {email}})
+     const user= await User.findOne({where: {email}})
+
      //verifie si l'email existe
-    .then (user => {
+    
         if (!user) {
         return res.status(401).json("utilisateur ou mot de passe incorrect");
     }
-    const isValidPwd = bcryptjs.compare(password, user.password);
+
+    const isValidPwd = await bcryptjs.compare(password, user.password);
+
     if (!isValidPwd) {
         return res.status(401).json({message: "utilisateur ou mot de passe incorrect"});
     }
+    const userSafe = await User.findByPk(user.id, {
+        attributes: { exclude: ['password', 'createdAt', 'updatedAt'] }});
     const token = jwt.sign({id: user.id},process.env.JWT_SECRET,{ expiresIn: process.env.JWT_EXPIRES_IN });
-    return res.status(200).json({token: token,message: "connexion réussie" });
-    })
-    .catch(err => res.status(500).json(err.message));    
+    return res.status(200).json({token: token,user:userSafe});
+    }
+    catch(error){
+     return res.status(500).json(error.message); 
+    }   
 }
 
 export const getProfile = async(req, res)=>{
     try {
         const user = await User.findByPk(req.userId, {
-    attributes: { exclude: ['password'] }
+    attributes: { exclude: ['password','createdAt', 'updatedAt'] }
     });
         return res.status(200).json(user)
     } catch (error) {
