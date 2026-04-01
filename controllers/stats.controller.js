@@ -8,7 +8,7 @@ export const getBookStats = async (req, res) => {
         const totalAvailableResult = await Book.sum('available_quantity');
         const totalAvailable = totalAvailableResult || 0;
 
-        // ✅ Majuscule car ENUM('Borrowed')
+
         const totalBorrowed = await Borrow.count({
             where: { status: 'Borrowed' }
         });
@@ -48,7 +48,7 @@ export const getMemberStats = async (req, res) => {
     try {
         const totalMembers = await Member.count();
 
-        // ✅ Majuscule car stocké 'Active'/'Inactive' en BDD
+
         const activeMembers = await Member.count({ where: { status: 'Active' } });
         const inactiveMembers = await Member.count({ where: { status: 'Inactive' } });
 
@@ -66,7 +66,7 @@ export const getBorrowStats = async (req, res) => {
     try {
         const totalBorrows = await Borrow.count();
 
-        // ✅ Majuscules car ENUM('Borrowed', 'Returned', 'Overdue')
+
         const activeBorrows = await Borrow.count({
             where: { status: 'Borrowed' }
         });
@@ -89,10 +89,10 @@ export const getBorrowStats = async (req, res) => {
             ],
             include: [{
                 model: Book,
-                as: 'book',          // ✅ alias ajouté
+                as: 'book',
                 attributes: ['title', 'author']
             }],
-            group: ['Borrow.book_id', 'book.id'],   // ✅ corrigé
+            group: ['Borrow.book_id', 'book.id'],
             order: [[Borrow.sequelize.fn('COUNT', Borrow.sequelize.col('book_id')), 'DESC']],
             limit: 5,
             raw: true
@@ -102,8 +102,8 @@ export const getBorrowStats = async (req, res) => {
             book_id: item.book_id,
             borrow_count: item.borrow_count,
             book: {
-                title: item['book.title'],    // ✅ minuscule car alias 'book'
-                author: item['book.author']   // ✅ minuscule car alias 'book'
+                title: item['book.title'],
+                author: item['book.author']
             }
         }));
 
