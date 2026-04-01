@@ -4,7 +4,7 @@ import { sequelize } from './models/index.js';
 
 dotenv.config();
 
-sequelize.sync().then(() => { 
+sequelize.sync({ alter: false }).then(() => { 
     app.listen(process.env.PORT || 5000, () => {
     console.log(`Serveur is running on port ${process.env.PORT || 5000}`);
     }); 
